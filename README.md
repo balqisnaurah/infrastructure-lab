@@ -14,7 +14,7 @@ Instalasi Ubuntu Server 24.04 LTS di Oracle VirtualBox.
 |-----------|-------|
 | RAM | 2048 MB |
 | CPU | 2 Core |
-| Storage | 20 GB (LVM) |
+| Storage | 40 GB (LVM) |
 | Network | NAT dengan Port Forwarding |
 | SSH | OpenSSH Server aktif |
 
@@ -138,15 +138,109 @@ services:
 
 ---
 
+### 5. ELK Stack - Elasticsearch + Kibana
+
+Deploy Elasticsearch dan Kibana menggunakan Docker Compose untuk eksplorasi centralized logging. Elasticsearch berfungsi sebagai mesin pencarian dan penyimpanan log, sedangkan Kibana menyediakan antarmuka web untuk visualisasi dan eksplorasi data.
+
+**Arsitektur:**
+
+```
+Data Log --> Elasticsearch (9200) --> Kibana (5601)
+```
+
+**Konfigurasi `docker-compose.yml`:**
+
+```yaml
+version: '3'
+services:
+  elasticsearch:
+    image: elasticsearch:7.17.10
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+    ports:
+      - "9200:9200"
+    mem_limit: 512m
+
+  kibana:
+    image: kibana:7.17.10
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+```
+
+**Proses yang dilakukan:**
+1. Menjalankan Elasticsearch dan Kibana menggunakan Docker Compose
+2. Memasukkan data log contoh ke Elasticsearch menggunakan REST API (curl)
+3. Membuat index pattern `server-logs*` di Kibana
+4. Melihat data log melalui Discover di Kibana
+5. Membuat visualisasi "Log Level Distribution" menggunakan Lens
+
+**Contoh insert data log via curl:**
+
+```bash
+curl -X POST "localhost:9200/server-logs/_doc" -H "Content-Type: application/json" -d '{
+  "timestamp": "2026-04-14T08:05:33",
+  "level": "ERROR",
+  "message": "Database connection timeout",
+  "service": "api-service"
+}'
+```
+
+---
+
+### 6. Custom Dockerfile
+
+Membuat Docker image sendiri yang berisi script monitoring kesehatan sistem. Menunjukkan pembuatan image dari Dockerfile, bukan hanya menjalankan image bawaan.
+
+**Dockerfile:**
+
+```dockerfile
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    iproute2 \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /scripts
+
+COPY backup.sh .
+COPY system-health-check.sh .
+
+RUN sed -i 's/\r$//' backup.sh system-health-check.sh && \
+    chmod +x backup.sh system-health-check.sh
+
+CMD ["bash", "./system-health-check.sh"]
+```
+
+**Perintah yang digunakan:**
+
+```bash
+docker build -t system-health-check .
+docker run --name health-check system-health-check
+```
+
+Hasil: script berjalan di dalam container yang terisolasi, menampilkan informasi sistem, CPU, memory, disk, dan status jaringan dari perspektif container.
+
+---
+
 ## Ringkasan Port Forwarding
 
 | Service | Host Port | Guest Port | Protokol |
 |---------|-----------|-----------|----------|
+| SSH | 2222 | 22 | TCP |
 | Nginx | 8080 | 8080 | TCP |
 | WordPress | 8081 | 8081 | TCP |
 | Prometheus | 9090 | 9090 | TCP |
 | Node Exporter | 9100 | 9100 | TCP |
 | Grafana (Monitoring) | 3001 | 3001 | TCP |
+| Elasticsearch | 9200 | 9200 | TCP |
+| Kibana | 5601 | 5601 | TCP |
 
 ---
 
@@ -169,9 +263,11 @@ Semua bukti dokumentasi tersedia di folder [`/screenshots`](./screenshots).
 | Prometheus | Time-series database untuk metrics |
 | Node Exporter | Agent pengumpul metrics sistem |
 | Grafana | Dashboard monitoring dan visualisasi |
+| Elasticsearch 7.17.10 | Mesin pencarian dan penyimpanan log |
+| Kibana 7.17.10 | Visualisasi dan eksplorasi data log |
 
 ---
 
 ## Tentang
 
-Repository ini dibuat sebagai dokumentasi proses belajar provisioning virtual machine, container, dan tools monitoring yang umum digunakan dalam pengelolaan infrastruktur cloud.
+Repository ini dibuat sebagai dokumentasi proses belajar provisioning virtual machine, container, monitoring stack, dan centralized logging yang umum digunakan dalam pengelolaan infrastruktur cloud.
