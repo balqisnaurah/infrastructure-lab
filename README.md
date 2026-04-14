@@ -160,7 +160,7 @@ Semua bukti dokumentasi tersedia di folder [`/screenshots`](./screenshots).
 
 | Tools | Fungsi |
 |-------|--------|
-| Oracle VirtualBox 7.x | Virtualisasi untuk menjalankan Ubuntu Server |
+| Oracle VirtualBox 7.2 | Virtualisasi untuk menjalankan Ubuntu Server |
 | Ubuntu Server 24.04 LTS | Sistem operasi di dalam VM |
 | Docker | Container runtime |
 | Docker Compose | Orkestrasi multi-container |
