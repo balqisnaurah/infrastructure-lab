@@ -101,6 +101,16 @@ Hasil: dashboard Grafana berhasil diakses melalui `http://localhost:3000` dengan
 
 ---
 
+### 5. Monitoring Stack - Prometheus + Grafana
+
+Deploy monitoring stack lengkap menggunakan Docker Compose yang terdiri dari tiga komponen: Prometheus sebagai time-series database untuk mengumpulkan metrics, Node Exporter sebagai agent yang mengekspos metrics sistem (CPU, memory, disk), Grafana sebagai dashboard visualisasi.
+
+**Arsitektur:**
+
+
+
+---
+
 ## Ringkasan Port Forwarding
 
 | Service | Host Port | Guest Port | Protokol |
