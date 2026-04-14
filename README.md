@@ -32,12 +32,6 @@ Menjalankan web server Nginx di dalam Docker container dan mengaksesnya melalui 
 docker run -d -p 8080:80 --name webserver nginx
 ```
 
-**Port Forwarding (VirtualBox):**
-
-| Host Port | Guest Port | Service |
-|-----------|-----------|---------|
-| 8080 | 8080 | Nginx |
-
 Hasil: halaman "Welcome to nginx!" berhasil diakses melalui `http://localhost:8080` di browser Windows.
 
 ---
@@ -81,33 +75,66 @@ Hasil: halaman setup WordPress berhasil diakses melalui `http://localhost:8081`.
 
 ---
 
-### 4. Monitoring - Grafana
+### 4. Monitoring Stack - Prometheus + Grafana
 
-Menjalankan Grafana di Docker untuk eksplorasi tools monitoring dan visualisasi data.
-
-**Perintah yang digunakan:**
-
-```bash
-docker run -d -p 3000:3000 --name grafana grafana/grafana
-```
-
-**Port Forwarding (VirtualBox):**
-
-| Host Port | Guest Port | Service |
-|-----------|-----------|---------|
-| 3000 | 3000 | Grafana |
-
-Hasil: dashboard Grafana berhasil diakses melalui `http://localhost:3000` dengan login default (admin/admin).
-
----
-
-### 5. Monitoring Stack - Prometheus + Grafana
-
-Deploy monitoring stack lengkap menggunakan Docker Compose yang terdiri dari tiga komponen: Prometheus sebagai time-series database untuk mengumpulkan metrics, Node Exporter sebagai agent yang mengekspos metrics sistem (CPU, memory, disk), Grafana sebagai dashboard visualisasi.
+Deploy monitoring stack lengkap menggunakan Docker Compose yang terdiri dari tiga komponen: Prometheus sebagai time-series database untuk mengumpulkan metrics, Node Exporter sebagai agent yang mengekspos metrics sistem (CPU, memory, disk), dan Grafana sebagai dashboard visualisasi.
 
 **Arsitektur:**
 
+```
+Node Exporter (9100) --> Prometheus (9090) --> Grafana (3001)
+```
 
+Prometheus melakukan scraping metrics dari Node Exporter setiap 15 detik, lalu Grafana membaca data dari Prometheus dan menampilkannya dalam bentuk grafik interaktif.
+
+**Konfigurasi `prometheus.yml`:**
+
+```yaml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+```
+
+**Konfigurasi `docker-compose.yml`:**
+
+```yaml
+version: '3'
+services:
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - node-exporter
+
+  node-exporter:
+    image: prom/node-exporter
+    ports:
+      - "9100:9100"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: your_password_here
+    depends_on:
+      - prometheus
+```
+
+**Dashboard yang dibuat:**
+- Panel "CPU Usage" menggunakan query `node_cpu_seconds_total`
+- Panel "Memory Available" menggunakan query `node_memory_MemAvailable_bytes`
 
 ---
 
@@ -117,7 +144,9 @@ Deploy monitoring stack lengkap menggunakan Docker Compose yang terdiri dari tig
 |---------|-----------|-----------|----------|
 | Nginx | 8080 | 8080 | TCP |
 | WordPress | 8081 | 8081 | TCP |
-| Grafana | 3000 | 3000 | TCP |
+| Prometheus | 9090 | 9090 | TCP |
+| Node Exporter | 9100 | 9100 | TCP |
+| Grafana (Monitoring) | 3001 | 3001 | TCP |
 
 ---
 
@@ -129,16 +158,17 @@ Semua bukti dokumentasi tersedia di folder [`/screenshots`](./screenshots).
 
 ## Tools yang Digunakan
 
-| Tools | Versi | Fungsi |
-|-------|-------|--------|
-| Oracle VirtualBox | 7.2 | Virtualisasi untuk menjalankan Ubuntu Server |
-| Ubuntu Server | 24.04 LTS | Sistem operasi di dalam VM |
-| Docker | latest | Container runtime |
-| Docker Compose | latest | Orkestrasi multi-container |
-| Nginx | latest | Web server |
-| WordPress | latest | Content Management System (CMS) |
-| MySQL | 5.7 | Database server untuk WordPress |
-| Grafana | latest | Dashboard monitoring dan visualisasi |
+| Tools | Fungsi |
+|-------|--------|
+| Oracle VirtualBox 7.x | Virtualisasi untuk menjalankan Ubuntu Server |
+| Ubuntu Server 24.04 LTS | Sistem operasi di dalam VM |
+| Docker | Container runtime |
+| Docker Compose | Orkestrasi multi-container |
+| Nginx | Web server |
+| WordPress + MySQL 5.7 | Content Management System (CMS) |
+| Prometheus | Time-series database untuk metrics |
+| Node Exporter | Agent pengumpul metrics sistem |
+| Grafana | Dashboard monitoring dan visualisasi |
 
 ---
 
